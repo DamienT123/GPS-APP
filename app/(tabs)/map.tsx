@@ -14,12 +14,16 @@ type Waypoint = { id: string; lon: number; lat: number };
 const OSRM_BASE = "https://router.project-osrm.org";
 const PROFILE = "walking";
 
+// Start on world view (no Brussels flash)
+const WORLD_CENTER: [number, number] = [0, 0];
+const WORLD_ZOOM = 1.6;
+
 async function snapToRoad(lon: number, lat: number) {
   const url = `${OSRM_BASE}/nearest/v1/${PROFILE}/${lon},${lat}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`OSRM nearest failed (${res.status})`);
-  const data = await res.json();
 
+  const data = await res.json();
   const loc = data?.waypoints?.[0]?.location;
   if (!loc || loc.length !== 2) throw new Error("OSRM nearest: no waypoint found");
 
@@ -35,41 +39,33 @@ async function buildRoute(points: { lon: number; lat: number }[]) {
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`OSRM route failed (${res.status})`);
-  const data = await res.json();
 
+  const data = await res.json();
   const geom = data?.routes?.[0]?.geometry;
   if (!geom?.coordinates?.length) throw new Error("OSRM route: no geometry returned");
 
-  return {
-    type: "Feature",
-    geometry: geom,
-    properties: {},
-  };
+  return { type: "Feature", geometry: geom, properties: {} };
 }
 
 export default function MapScreen() {
   const cameraRef = useRef<any>(null);
 
-  // GPS position
   const [pos, setPos] = useState<{ lon: number; lat: number } | null>(null);
-
-  // Waypoints + route
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [routeFeature, setRouteFeature] = useState<any>(null);
 
-  // Zoom level that USER controls via buttons
   const [zoomLevel, setZoomLevel] = useState(12);
+  const [followMe, setFollowMe] = useState(false);
 
-  // UI state
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("Tap on the map to add walking waypoints.");
 
-  const points = useMemo(
+  const routePoints = useMemo(
     () => waypoints.map((w) => ({ lon: w.lon, lat: w.lat })),
     [waypoints]
   );
 
-  // GPS permission + watch
+  // GPS permission + tracking (NO camera move on startup)
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
 
@@ -84,15 +80,7 @@ export default function MapScreen() {
         accuracy: Location.Accuracy.Balanced,
       });
 
-      const first = { lon: current.coords.longitude, lat: current.coords.latitude };
-      setPos(first);
-
-      // Center on GPS when opening the map (keep zoomLevel state)
-      cameraRef.current?.setCamera({
-        centerCoordinate: [first.lon, first.lat],
-        zoomLevel,
-        animationDuration: 700,
-      });
+      setPos({ lon: current.coords.longitude, lat: current.coords.latitude });
 
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
@@ -103,11 +91,13 @@ export default function MapScreen() {
     })();
 
     return () => sub?.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addWaypointFromTap = async (lon: number, lat: number) => {
     if (busy) return;
+
+    setFollowMe(false);
+    cameraRef.current?.setCamera({ followUserLocation: false, animationDuration: 0 });
 
     setBusy(true);
     setMessage("Snapping waypoint to road…");
@@ -115,13 +105,14 @@ export default function MapScreen() {
     try {
       const snapped = await snapToRoad(lon, lat);
 
-      const nextWaypoints = [...waypoints, { id: Date.now().toString(), ...snapped }];
+      const nextWaypoints: Waypoint[] = [
+        ...waypoints,
+        { id: Date.now().toString(), ...snapped },
+      ];
       setWaypoints(nextWaypoints);
 
-      // Center on last waypoint BUT keep current zoomLevel
       cameraRef.current?.setCamera({
-        centerCoordinate: [snapped.lon, snapped.lat],
-        zoomLevel,
+        centerCoordinate: [snapped.lon, snapped.lat],        
         animationDuration: 500,
       });
 
@@ -142,12 +133,14 @@ export default function MapScreen() {
   };
 
   const reset = () => {
+    setFollowMe(false);
     setWaypoints([]);
     setRouteFeature(null);
     setMessage("Reset. Tap again to add waypoints.");
   };
 
   const zoomIn = () => {
+    setFollowMe(false);
     setZoomLevel((z) => {
       const next = Math.min(z + 1, 20);
       cameraRef.current?.setCamera({ zoomLevel: next, animationDuration: 200 });
@@ -156,6 +149,7 @@ export default function MapScreen() {
   };
 
   const zoomOut = () => {
+    setFollowMe(false);
     setZoomLevel((z) => {
       const next = Math.max(z - 1, 3);
       cameraRef.current?.setCamera({ zoomLevel: next, animationDuration: 200 });
@@ -165,10 +159,12 @@ export default function MapScreen() {
 
   const centerOnMe = () => {
     if (!pos) return;
+
+    setFollowMe(true);
+
     cameraRef.current?.setCamera({
-      centerCoordinate: [pos.lon, pos.lat],
       zoomLevel,
-      animationDuration: 500,
+      animationDuration: 200,
     });
   };
 
@@ -186,20 +182,19 @@ export default function MapScreen() {
       >
         <Camera
           ref={cameraRef}
+          followUserLocation={followMe}
           defaultSettings={{
-            centerCoordinate: [4.3517, 50.8503],
-            zoomLevel: 12,
+            centerCoordinate: WORLD_CENTER,
+            zoomLevel: WORLD_ZOOM,
           }}
         />
 
-        {/* GPS marker */}
         {pos && (
           <PointAnnotation id="me" coordinate={[pos.lon, pos.lat]}>
             <View style={styles.meDot} />
           </PointAnnotation>
         )}
 
-        {/* Route line */}
         {routeFeature && (
           <ShapeSource id="route" shape={routeFeature}>
             <LineLayer
@@ -214,7 +209,6 @@ export default function MapScreen() {
           </ShapeSource>
         )}
 
-        {/* Waypoint markers */}
         {waypoints.map((wp, index) => (
           <PointAnnotation key={wp.id} id={wp.id} coordinate={[wp.lon, wp.lat]}>
             <View style={styles.wpMarker}>
@@ -227,7 +221,9 @@ export default function MapScreen() {
       <View style={styles.overlay}>
         <View style={{ flex: 1 }}>
           <Text style={styles.text}>{message}</Text>
-          <Text style={styles.subText}>Zoom: {zoomLevel.toFixed(1)}</Text>
+          <Text style={styles.subText}>
+            Zoom: {zoomLevel.toFixed(1)} • Follow: {followMe ? "ON" : "OFF"}
+          </Text>
         </View>
 
         {busy ? (
@@ -291,14 +287,24 @@ const styles = StyleSheet.create({
   },
 
   wpMarker: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "crimson",
+    width: 24,
+    height: 24,
+    borderRadius: 10,
+    backgroundColor: "#D0021B",
     borderColor: "white",
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
   },
-  wpText: { color: "white", fontWeight: "800", fontSize: 12 },
+
+  wpText: {
+    color: "white",
+    fontWeight: "900",
+    fontSize: 14,
+  },
 });
