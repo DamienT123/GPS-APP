@@ -9,8 +9,9 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { initDb } from "../services/db";
 
 export const unstable_settings = {
-  anchor: "(tabs)",
+  initialRouteName: '(tabs)',
 };
+
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

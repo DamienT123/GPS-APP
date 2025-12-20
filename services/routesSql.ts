@@ -163,5 +163,3 @@ export function listDirtyRoutes(ownerUid?: string | null) {
   const rows = db.getAllSync(`SELECT * FROM routes ${whereSql}`, args);
   return rows.map(rowToRoute);
 }
-
-
