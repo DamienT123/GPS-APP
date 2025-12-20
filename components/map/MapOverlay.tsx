@@ -7,10 +7,14 @@ type Props = {
   followMe: boolean;
   busy: boolean;
   canCenterOnMe: boolean;
+
   onZoomOut: () => void;
   onZoomIn: () => void;
   onCenterOnMe: () => void;
   onReset: () => void;
+
+  onSaveRoute?: () => void;
+  canSaveRoute?: boolean;
 };
 
 export function MapOverlay({
@@ -23,6 +27,8 @@ export function MapOverlay({
   onZoomIn,
   onCenterOnMe,
   onReset,
+  onSaveRoute,
+  canSaveRoute = false,
 }: Props) {
   return (
     <View style={styles.overlay}>
@@ -36,16 +42,30 @@ export function MapOverlay({
       {busy ? (
         <ActivityIndicator />
       ) : (
-        <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={styles.row}>
           <Pressable style={styles.btn} onPress={onZoomOut}>
             <Text style={styles.btnText}>-</Text>
           </Pressable>
+
           <Pressable style={styles.btn} onPress={onZoomIn}>
             <Text style={styles.btnText}>+</Text>
           </Pressable>
+
           <Pressable style={styles.btn} onPress={onCenterOnMe} disabled={!canCenterOnMe}>
             <Text style={styles.btnText}>Me</Text>
           </Pressable>
+
+          {}
+          {onSaveRoute && (
+            <Pressable
+              style={[styles.btn, !canSaveRoute && styles.btnDisabled]}
+              onPress={onSaveRoute}
+              disabled={!canSaveRoute}
+            >
+              <Text style={styles.btnText}>Save</Text>
+            </Pressable>
+          )}
+
           <Pressable style={styles.btn} onPress={onReset}>
             <Text style={styles.btnText}>Reset</Text>
           </Pressable>
@@ -68,8 +88,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+
   text: { fontSize: 14, fontWeight: "600" },
   subText: { fontSize: 12, opacity: 0.7, marginTop: 2 },
+
+  row: { flexDirection: "row", gap: 8 },
 
   btn: {
     paddingHorizontal: 12,
@@ -77,5 +100,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "black",
   },
+  btnDisabled: {
+    opacity: 0.35,
+  },
+
   btnText: { color: "white", fontWeight: "700" },
 });

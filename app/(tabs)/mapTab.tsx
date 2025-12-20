@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, StyleSheet } from "react-native";
 
-import { DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM } from "../../config/mapConfig";
+import { DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM, ME_ZOOM } from "../../config/mapConfig";
 import { useLiveLocation } from "../../hooks/useLiveLocation";
 import { buildRoute, snapToRoad } from "../../services/osrmService";
 import type { Waypoint, RouteFeature } from "../../types/mapTypes";
@@ -9,14 +9,9 @@ import type { Waypoint, RouteFeature } from "../../types/mapTypes";
 import { MapCanvas } from "../../components/map/MapCanvas";
 import { MapOverlay } from "../../components/map/MapOverlay";
 
-import { ME_ZOOM } from "../../config/mapConfig";
-
-
-
+import { createRoute, saveRoute } from "../../services/routesSql";
 
 export default function MapScreen() {
-
-  
   const cameraRef = useRef<any>(null);
 
   const { pos, error } = useLiveLocation();
@@ -34,15 +29,19 @@ export default function MapScreen() {
     if (error) setMessage(error);
   }, [error]);
 
-  const routePoints = useMemo(
-    () => waypoints.map((w) => ({ lon: w.lon, lat: w.lat })),
-    [waypoints]
-  );
+  useEffect(() => {
+    if (!followMe || !pos) return;
+
+    cameraRef.current?.setCamera({
+      centerCoordinate: [pos.lon, pos.lat],
+      animationDuration: 0,
+    });
+  }, [followMe, pos]);
+
 
   const stopFollowing = () => {
     setFollowMe(false);
   };
-
 
   const addWaypointFromTap = async (lon: number, lat: number) => {
     if (busy) return;
@@ -109,17 +108,33 @@ export default function MapScreen() {
   const centerOnMe = () => {
     if (!pos) return;
 
-    const targetZoom = ME_ZOOM;
-
     setFollowMe(true);
 
     cameraRef.current?.setCamera({
       centerCoordinate: [pos.lon, pos.lat],
-      zoomLevel: targetZoom,
+      zoomLevel: ME_ZOOM,      // tijdelijk
       animationDuration: 200,
     });
   };
 
+
+  const saveCurrentRoute = () => {
+    if (!routeFeature || waypoints.length < 2) {
+      setMessage("Add at least 2 waypoints before saving.");
+      return;
+    }
+
+    const r = createRoute({
+      name: `Route ${new Date().toLocaleString()}`,
+      profile: "walking",
+      waypoints,
+      routeFeature,
+      ownerUid: null, // later Firebase uid
+    });
+
+    saveRoute(r);
+    setMessage("✅ Route saved locally (SQLite)");
+  };
 
   return (
     <View style={styles.container}>
@@ -141,6 +156,8 @@ export default function MapScreen() {
         onZoomIn={zoomIn}
         onCenterOnMe={centerOnMe}
         onReset={reset}
+        onSaveRoute={saveCurrentRoute}         
+        canSaveRoute={!!routeFeature && waypoints.length >= 2} // ✅ ook toevoegen
       />
     </View>
   );

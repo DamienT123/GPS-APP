@@ -20,7 +20,8 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
     npx expo start --clear --tunnel 
     on different Wi-Fi
 
-
+   npx expo run:android
+   or
     npx react-native run-android 
     to rebuild dev build when changing core elements
 
