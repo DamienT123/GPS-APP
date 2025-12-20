@@ -16,6 +16,9 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start 
    or
    npx expo start --dev-client
+   or
+    npx expo start --clear --tunnel 
+    on different Wi-Fi
 
    ```
 
