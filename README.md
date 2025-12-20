@@ -20,6 +20,10 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
     npx expo start --clear --tunnel 
     on different Wi-Fi
 
+
+    npx react-native run-android 
+    to rebuild dev build when changing core elements
+
    ```
 
 In the output, you'll find options to open the app in a
