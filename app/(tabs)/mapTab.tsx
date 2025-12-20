@@ -9,7 +9,14 @@ import type { Waypoint, RouteFeature } from "../../types/mapTypes";
 import { MapCanvas } from "../../components/map/MapCanvas";
 import { MapOverlay } from "../../components/map/MapOverlay";
 
+import { ME_ZOOM } from "../../config/mapConfig";
+
+
+
+
 export default function MapScreen() {
+
+  
   const cameraRef = useRef<any>(null);
 
   const { pos, error } = useLiveLocation();
@@ -34,8 +41,8 @@ export default function MapScreen() {
 
   const stopFollowing = () => {
     setFollowMe(false);
-    cameraRef.current?.setCamera({ followUserLocation: false, animationDuration: 0 });
   };
+
 
   const addWaypointFromTap = async (lon: number, lat: number) => {
     if (busy) return;
@@ -101,9 +108,18 @@ export default function MapScreen() {
 
   const centerOnMe = () => {
     if (!pos) return;
+
+    const targetZoom = ME_ZOOM;
+
     setFollowMe(true);
-    cameraRef.current?.setCamera({ zoomLevel, animationDuration: 200 });
+
+    cameraRef.current?.setCamera({
+      centerCoordinate: [pos.lon, pos.lat],
+      zoomLevel: targetZoom,
+      animationDuration: 200,
+    });
   };
+
 
   return (
     <View style={styles.container}>
@@ -112,7 +128,6 @@ export default function MapScreen() {
         pos={pos}
         waypoints={waypoints}
         routeFeature={routeFeature}
-        followMe={followMe}
         onMapPress={addWaypointFromTap}
       />
 

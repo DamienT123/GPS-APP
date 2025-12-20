@@ -35,13 +35,18 @@ export function useLiveLocation(): UseLiveLocationResult {
         });
 
         if (!mounted) return;
+        //requestAnimationFrame is used to avoid potential setState during render warnings
+        requestAnimationFrame(() => {
         setPos({ lon: current.coords.longitude, lat: current.coords.latitude });
+        });
 
         sub = await Location.watchPositionAsync(
           { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
           (loc) => {
             if (!mounted) return;
+            requestAnimationFrame(() => {
             setPos({ lon: loc.coords.longitude, lat: loc.coords.latitude });
+            });
           }
         );
       } catch (e: any) {

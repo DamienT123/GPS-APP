@@ -13,8 +13,11 @@ type Props = {
   pos: LonLat | null;
   waypoints: Waypoint[];
   routeFeature: RouteFeature | null;
-  followMe: boolean;
   onMapPress: (lon: number, lat: number) => void;
+  onMapReady?: () => void;
+
+  
+  onZoomChanged?: (zoom: number) => void;
 };
 
 export function MapCanvas({
@@ -22,13 +25,28 @@ export function MapCanvas({
   pos,
   waypoints,
   routeFeature,
-  followMe,
   onMapPress,
+  onMapReady,
+  onZoomChanged,
 }: Props) {
   return (
     <MapView
       style={styles.map}
       mapStyle={MAP_STYLE_URL}
+      onDidFinishLoadingMap={() => {
+        onMapReady?.();
+      }}
+      onRegionDidChange={(e: any) => {
+        // Verschilt licht per platform / versie
+        const zoom =
+          e?.properties?.zoomLevel ??
+          e?.properties?.zoom ??
+          e?.geometry?.zoomLevel;
+
+        if (typeof zoom === "number") {
+          onZoomChanged?.(zoom);
+        }
+      }}
       onPress={(e: any) => {
         const coords = e?.geometry?.coordinates;
         if (!coords) return;
@@ -38,7 +56,6 @@ export function MapCanvas({
     >
       <Camera
         ref={cameraRef}
-        followUserLocation={followMe}
         defaultSettings={{
           centerCoordinate: WORLD_CENTER,
           zoomLevel: WORLD_ZOOM,
