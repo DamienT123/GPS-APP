@@ -103,6 +103,45 @@ export default function MapScreen() {
     await recalcRouteFor(next);
   };
 
+
+  const addWaypointFromSearch = async (data: { lon: number; lat: number; region?: string; country?: string }) => {
+  if (busy) return;
+
+  stopFollowing();
+  setBusy(true);
+  setMessage("Adding searched location…");
+
+  try {
+    const snapped = await snapToRoad(data.lon, data.lat);
+
+    const next: Waypoint[] = [
+      ...waypoints,
+      {
+        id: Date.now().toString(),
+        ...snapped,
+        region: data.region,
+        country: data.country,
+      },
+    ];
+
+    setWaypoints(next);
+
+    cameraRef.current?.setCamera({
+      centerCoordinate: [snapped.lon, snapped.lat],
+      animationDuration: 500,
+    });
+
+    await recalcRouteFor(next);
+  } catch (err: any) {
+    setRouteFeature(null);
+    setMessage(err?.message ?? "Search add failed");
+  } finally {
+    setBusy(false);
+  }
+};
+
+
+
   const removeWaypoint = async (index: number) => {
     if (busy) return;
 
@@ -175,13 +214,20 @@ export default function MapScreen() {
         onMapPress={addWaypointFromTap}
       />
 
-      <TopWaypointsDropdown
-        waypoints={waypoints}
-        busy={busy}
-        onMoveUp={(i) => moveWaypoint(i, i - 1)}
-        onMoveDown={(i) => moveWaypoint(i, i + 1)}
-        onRemove={removeWaypoint}
-      />
+    <TopWaypointsDropdown
+      waypoints={waypoints}
+      busy={busy}
+      onMoveUp={(i) => moveWaypoint(i, i - 1)}
+      onMoveDown={(i) => moveWaypoint(i, i + 1)}
+      onRemove={removeWaypoint}
+      onAddWaypoint={addWaypointFromSearch}
+      onReset={reset}
+      onSaveRoute={saveCurrentRoute}
+      canSaveRoute={!!routeFeature && waypoints.length >= 2}
+    />
+
+
+
 
       <BottomRouteDropdown
         message={message}
@@ -192,10 +238,8 @@ export default function MapScreen() {
         onZoomOut={zoomOut}
         onZoomIn={zoomIn}
         onCenterOnMe={centerOnMe}
-        onReset={reset}
-        onSaveRoute={saveCurrentRoute}
-        canSaveRoute={!!routeFeature && waypoints.length >= 2}
       />
+
     </View>
   );
 }

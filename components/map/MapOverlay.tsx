@@ -11,11 +11,13 @@ type Props = {
   onZoomOut: () => void;
   onZoomIn: () => void;
   onCenterOnMe: () => void;
-  onReset: () => void;
+
+  onReset?: () => void;
 
   onSaveRoute?: () => void;
   canSaveRoute?: boolean;
 };
+
 
 export function MapOverlay({
   message,
@@ -60,18 +62,23 @@ export function MapOverlay({
           </Pressable>
 
           {onSaveRoute && (
-            <Pressable
-              style={[styles.btn, !canSaveRoute && styles.btnDisabled]}
-              onPress={onSaveRoute}
-              disabled={!canSaveRoute}
-            >
-              <Text style={styles.btnText}>Save</Text>
-            </Pressable>
-          )}
+              <Pressable
+                style={[styles.btn, !canSaveRoute && styles.btnDisabled]}
+                onPress={onSaveRoute}
+                disabled={!canSaveRoute}
+              >
+                <Text style={styles.btnText}>Save</Text>
+              </Pressable>
+            )}
 
-          <Pressable style={styles.btn} onPress={onReset}>
-            <Text style={styles.btnText}>Reset</Text>
-          </Pressable>
+            {onReset && (
+              <Pressable style={styles.btn} onPress={onReset}>
+                <Text style={styles.btnText}>Reset</Text>
+              </Pressable>
+            )}
+
+
+          
         </View>
       )}
     </View>
