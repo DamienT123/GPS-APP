@@ -31,8 +31,8 @@ export function MapOverlay({
   canSaveRoute = false,
 }: Props) {
   return (
-    <View style={styles.overlay}>
-      <View style={{ flex: 1 }}>
+    <View style={styles.container}>
+      <View style={styles.info}>
         <Text style={styles.text}>{message}</Text>
         <Text style={styles.subText}>
           Zoom: {zoomLevel.toFixed(1)} • Follow: {followMe ? "ON" : "OFF"}
@@ -51,11 +51,14 @@ export function MapOverlay({
             <Text style={styles.btnText}>+</Text>
           </Pressable>
 
-          <Pressable style={styles.btn} onPress={onCenterOnMe} disabled={!canCenterOnMe}>
+          <Pressable
+            style={[styles.btn, !canCenterOnMe && styles.btnDisabled]}
+            onPress={onCenterOnMe}
+            disabled={!canCenterOnMe}
+          >
             <Text style={styles.btnText}>Me</Text>
           </Pressable>
 
-          {}
           {onSaveRoute && (
             <Pressable
               style={[styles.btn, !canSaveRoute && styles.btnDisabled]}
@@ -76,17 +79,14 @@ export function MapOverlay({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.92)",
+  container: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+  },
+
+  info: {
+    flex: 1,
   },
 
   text: { fontSize: 14, fontWeight: "600" },

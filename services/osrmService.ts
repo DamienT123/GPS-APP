@@ -12,7 +12,7 @@ type OsrmRouteResponse = {
       coordinates: number[][];
     };
   }>;
-};
+}; 
 
 export async function snapToRoad(lon: number, lat: number): Promise<LonLat> {
   const url = `${OSRM_BASE}/nearest/v1/${OSRM_PROFILE}/${lon},${lat}`;

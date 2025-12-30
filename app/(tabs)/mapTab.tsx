@@ -7,7 +7,7 @@ import { buildRoute, snapToRoad } from "../../services/osrmService";
 import type { Waypoint, RouteFeature } from "../../types/mapTypes";
 
 import { MapCanvas } from "../../components/map/MapCanvas";
-import { MapOverlay } from "../../components/map/MapOverlay";
+import { TopWaypointsDropdown, BottomRouteDropdown } from "../../components/map/MapDropdowns";
 
 import { createRoute, saveRoute } from "../../services/routesSql";
 
@@ -38,9 +38,31 @@ export default function MapScreen() {
     });
   }, [followMe, pos]);
 
+  const stopFollowing = () => setFollowMe(false);
 
-  const stopFollowing = () => {
-    setFollowMe(false);
+  const recalcRouteFor = async (pts: Waypoint[]) => {
+    if (pts.length < 2) {
+      setRouteFeature(null);
+      setMessage(
+        pts.length === 1
+          ? "Add one more waypoint to create a route."
+          : "Tap on the map to add walking waypoints."
+      );
+      return;
+    }
+
+    setBusy(true);
+    setMessage("Recalculating route…");
+    try {
+      const route = await buildRoute(pts);
+      setRouteFeature(route);
+      setMessage(`Waypoints: ${pts.length} • Route ready`);
+    } catch (err: any) {
+      setRouteFeature(null);
+      setMessage(err?.message ?? "OSRM error");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const addWaypointFromTap = async (lon: number, lat: number) => {
@@ -52,32 +74,41 @@ export default function MapScreen() {
 
     try {
       const snapped = await snapToRoad(lon, lat);
-
-      const nextWaypoints: Waypoint[] = [
-        ...waypoints,
-        { id: Date.now().toString(), ...snapped },
-      ];
-      setWaypoints(nextWaypoints);
+      const next: Waypoint[] = [...waypoints, { id: Date.now().toString(), ...snapped }];
+      setWaypoints(next);
 
       cameraRef.current?.setCamera({
         centerCoordinate: [snapped.lon, snapped.lat],
         animationDuration: 500,
       });
 
-      if (nextWaypoints.length >= 2) {
-        setMessage("Calculating walking route…");
-        const route = await buildRoute(nextWaypoints);
-        setRouteFeature(route);
-        setMessage(`Waypoints: ${nextWaypoints.length} • Route ready`);
-      } else {
-        setRouteFeature(null);
-        setMessage("Add one more waypoint to create a route.");
-      }
+      await recalcRouteFor(next);
     } catch (err: any) {
+      setRouteFeature(null);
       setMessage(err?.message ?? "OSRM error");
     } finally {
       setBusy(false);
     }
+  };
+
+  const moveWaypoint = async (from: number, to: number) => {
+    if (busy) return;
+    if (to < 0 || to >= waypoints.length) return;
+
+    const next = [...waypoints];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+
+    setWaypoints(next);
+    await recalcRouteFor(next);
+  };
+
+  const removeWaypoint = async (index: number) => {
+    if (busy) return;
+
+    const next = waypoints.filter((_, i) => i !== index);
+    setWaypoints(next);
+    await recalcRouteFor(next);
   };
 
   const reset = () => {
@@ -109,14 +140,12 @@ export default function MapScreen() {
     if (!pos) return;
 
     setFollowMe(true);
-
     cameraRef.current?.setCamera({
       centerCoordinate: [pos.lon, pos.lat],
-      zoomLevel: ME_ZOOM,      // tijdelijk
+      zoomLevel: ME_ZOOM,
       animationDuration: 200,
     });
   };
-
 
   const saveCurrentRoute = () => {
     if (!routeFeature || waypoints.length < 2) {
@@ -129,7 +158,7 @@ export default function MapScreen() {
       profile: "walking",
       waypoints,
       routeFeature,
-      ownerUid: null, // later Firebase uid
+      ownerUid: null,
     });
 
     saveRoute(r);
@@ -146,7 +175,15 @@ export default function MapScreen() {
         onMapPress={addWaypointFromTap}
       />
 
-      <MapOverlay
+      <TopWaypointsDropdown
+        waypoints={waypoints}
+        busy={busy}
+        onMoveUp={(i) => moveWaypoint(i, i - 1)}
+        onMoveDown={(i) => moveWaypoint(i, i + 1)}
+        onRemove={removeWaypoint}
+      />
+
+      <BottomRouteDropdown
         message={message}
         zoomLevel={zoomLevel}
         followMe={followMe}
@@ -156,8 +193,8 @@ export default function MapScreen() {
         onZoomIn={zoomIn}
         onCenterOnMe={centerOnMe}
         onReset={reset}
-        onSaveRoute={saveCurrentRoute}         
-        canSaveRoute={!!routeFeature && waypoints.length >= 2} // ✅ ook toevoegen
+        onSaveRoute={saveCurrentRoute}
+        canSaveRoute={!!routeFeature && waypoints.length >= 2}
       />
     </View>
   );
