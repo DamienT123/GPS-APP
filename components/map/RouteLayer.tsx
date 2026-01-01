@@ -1,19 +1,33 @@
 import React from "react";
-import { ShapeSource, LineLayer } from "@maplibre/maplibre-react-native";
+import MapLibreGL from "@maplibre/maplibre-react-native";
 import type { RouteFeature } from "../../types/mapTypes";
 
-export function RouteLayer({ feature }: { feature: RouteFeature }) {
+type Props = {
+  feature: RouteFeature;
+  idPrefix?: string;
+  variant?: "current" | "saved";
+};
+
+export function RouteLayer({ feature, idPrefix = "route", variant = "current" }: Props) {
+  const sourceId = `${idPrefix}-route-source`;
+  const layerId = `${idPrefix}-route-line`;
+  const isSaved = variant === "saved";
+
   return (
-    <ShapeSource id="route" shape={feature as any}>
-      <LineLayer
-        id="routeLine"
+    <MapLibreGL.ShapeSource id={sourceId} shape={feature as any}>
+      <MapLibreGL.LineLayer
+        id={layerId}
         style={{
-          lineWidth: 5,
+          lineWidth: isSaved ? 5 : 6,
           lineJoin: "round",
           lineCap: "round",
-          lineColor: "#007AFF",
+          lineOpacity: isSaved ? 0.9 : 0.95,
+          lineColor: isSaved ? "#6B7280" : "#2563EB",
         }}
       />
-    </ShapeSource>
+    </MapLibreGL.ShapeSource>
   );
 }
+
+
+  
