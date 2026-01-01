@@ -7,23 +7,19 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 1. Install dependencies
 
    ```bash
-   npm install
+      npm install
    ```
 
 2. Start the app
 
    ```bash
-   npx expo start 
+      npx expo start --clear --tunnel 
    or
-   npx expo start --dev-client
+   
+      npx expo run:android
    or
-    npx expo start --clear --tunnel 
-    on different Wi-Fi
-
-   npx expo run:android
-   or
-    npx react-native run-android 
-    to rebuild dev build when changing core elements
+      npx react-native run-android 
+      to rebuild dev build when changing core elements
 
    ```
 

@@ -201,7 +201,7 @@ export default function MapScreen() {
     });
 
     saveRoute(r);
-    setMessage("✅ Route saved locally (SQLite)");
+    setMessage("Route saved locally (SQLite)");
   };
 
   return (
@@ -226,20 +226,16 @@ export default function MapScreen() {
       canSaveRoute={!!routeFeature && waypoints.length >= 2}
     />
 
-
-
-
-      <BottomRouteDropdown
-        message={message}
-        zoomLevel={zoomLevel}
-        followMe={followMe}
-        busy={busy}
-        canCenterOnMe={!!pos}
-        onZoomOut={zoomOut}
-        onZoomIn={zoomIn}
-        onCenterOnMe={centerOnMe}
-      />
-
+    <BottomRouteDropdown
+      message={message}
+      zoomLevel={zoomLevel}
+      followMe={followMe}
+      busy={busy}
+      canCenterOnMe={!!pos}
+      onZoomOut={zoomOut}
+      onZoomIn={zoomIn}
+      onCenterOnMe={centerOnMe}
+    />
     </View>
   );
 }

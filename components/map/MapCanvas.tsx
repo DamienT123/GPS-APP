@@ -37,7 +37,6 @@ export function MapCanvas({
         onMapReady?.();
       }}
       onRegionDidChange={(e: any) => {
-        // Verschilt licht per platform / versie
         const zoom =
           e?.properties?.zoomLevel ??
           e?.properties?.zoom ??
