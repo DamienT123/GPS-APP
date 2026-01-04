@@ -1,4 +1,4 @@
-import React, {  useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   View,
@@ -10,23 +10,36 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from "react-native";
 
 import { DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM, ME_ZOOM } from "../../config/mapConfig";
 import { useLiveLocation } from "../../hooks/useLiveLocation";
 import { buildRoute, snapToRoad } from "../../services/osrmService";
-import type { Waypoint, RouteFeature } from "../../types/mapTypes";
+import type { Waypoint, RouteFeature, LonLat } from "../../types/mapTypes";
 
 import { MapCanvas } from "../../components/map/MapCanvas";
 import { TopWaypointsDropdown, BottomRouteDropdown } from "../../components/map/MapDropdowns";
+import { ExploreDropdown } from "../../components/map/ExploreDropdown";
 
 import { createRoute, saveRoute, listRoutes } from "../../services/routesSql";
 import type { SavedRoute } from "../../services/routesSql";
+
+import {
+  formatAddress,
+  pickUsefulInfo,
+  type ExplorePlace,
+  describePlaceType,
+  reverseGeocodeOSM,
+  bestCityFromContext,
+} from "../../services/overpassService";
 
 export default function MapScreen() {
   const cameraRef = useRef<any>(null);
 
   const { pos, error } = useLiveLocation();
+
+  const [placeCtx, setPlaceCtx] = useState<Record<string, any>>({});
 
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [routeFeature, setRouteFeature] = useState<RouteFeature | null>(null);
@@ -35,7 +48,7 @@ export default function MapScreen() {
   const [followMe, setFollowMe] = useState(false);
 
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("Tap on the map to add walking waypoints.");
+  const [message, setMessage] = useState("Hold on the map to add waypoints.");
 
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
   const [showSavedRoutes, setShowSavedRoutes] = useState(false);
@@ -44,6 +57,14 @@ export default function MapScreen() {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [routeNameDraft, setRouteNameDraft] = useState("");
 
+  const [exploreCenter, setExploreCenter] = useState<LonLat | null>(null);
+  const [exploreCenterLabel, setExploreCenterLabel] = useState<string>("");
+
+  const [explorePlaces, setExplorePlaces] = useState<ExplorePlace[]>([]);
+  const [selectedExplore, setSelectedExplore] = useState<ExplorePlace | null>(null);
+
+  const [explorePinMode, setExplorePinMode] = useState(false);
+
   const refreshSavedRoutes = () => {
     try {
       const data = listRoutes();
@@ -51,6 +72,69 @@ export default function MapScreen() {
     } catch (e) {
       console.log("listRoutes failed:", e);
     }
+  };
+
+  const openUrl = async (url: string) => {
+    try {
+      const safeUrl = url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
+      const ok = await Linking.canOpenURL(safeUrl);
+      if (ok) await Linking.openURL(safeUrl);
+    } catch (e) {
+      console.log("openUrl failed:", e);
+    }
+  };
+
+  const ensurePlaceCtx = async (p: ExplorePlace) => {
+    let already: boolean | undefined = undefined;
+
+    setPlaceCtx((prev) => {
+      already = prev[p.id] !== undefined;
+      if (already) return prev;
+      return { ...prev, [p.id]: "__loading__" };
+    });
+
+    if (already) return;
+
+    try {
+      const ctx = await reverseGeocodeOSM(p.lat, p.lon);
+      setPlaceCtx((prev) => ({ ...prev, [p.id]: ctx }));
+    } catch {
+      setPlaceCtx((prev) => ({ ...prev, [p.id]: null }));
+    }
+  };
+
+  const googleSearchUrl = (p: ExplorePlace) => {
+    const parts: string[] = [];
+
+    if (p.name) parts.push(p.name);
+
+    const address = formatAddress(p.tags);
+    if (address) parts.push(address);
+
+    const ctx = placeCtx[p.id];
+    const usableCtx = ctx && ctx !== "__loading__" ? ctx : null;
+
+    const cityFromCtx = bestCityFromContext(usableCtx);
+    const countryFromCtx = (usableCtx?.country ?? "").trim();
+
+    if (!address) {
+      const tagCity =
+        p.tags["addr:city"] ||
+        p.tags["is_in:city"] ||
+        p.tags["addr:municipality"] ||
+        p.tags["addr:county"] ||
+        p.tags["addr:state"];
+
+      const tagCountry = p.tags["addr:country"] || p.tags["is_in:country"];
+
+      const finalCity = (tagCity || cityFromCtx || "").trim();
+      const finalCountry = (tagCountry || countryFromCtx || "").trim();
+
+      if (finalCity) parts.push(finalCity);
+      if (finalCountry) parts.push(finalCountry);
+    }
+
+    return `https://www.google.com/search?q=${encodeURIComponent(parts.join(" "))}`;
   };
 
   useEffect(() => {
@@ -74,11 +158,7 @@ export default function MapScreen() {
   const recalcRouteFor = async (pts: Waypoint[]) => {
     if (pts.length < 2) {
       setRouteFeature(null);
-      setMessage(
-        pts.length === 1
-          ? "Add one more waypoint to create a route."
-          : "Tap on the map to add walking waypoints."
-      );
+      setMessage(pts.length === 1 ? "Add one more waypoint to create a route." : "Hold on the map to add waypoints.");
       return;
     }
 
@@ -110,7 +190,7 @@ export default function MapScreen() {
 
       cameraRef.current?.setCamera({
         centerCoordinate: [snapped.lon, snapped.lat],
-        animationDuration: 500,
+        animationDuration: 350,
       });
 
       await recalcRouteFor(next);
@@ -122,12 +202,7 @@ export default function MapScreen() {
     }
   };
 
-  const addWaypointFromSearch = async (data: {
-    lon: number;
-    lat: number;
-    region?: string;
-    country?: string;
-  }) => {
+  const addWaypointFromSearch = async (data: { lon: number; lat: number; region?: string; country?: string }) => {
     if (busy) return;
 
     stopFollowing();
@@ -151,7 +226,7 @@ export default function MapScreen() {
 
       cameraRef.current?.setCamera({
         centerCoordinate: [snapped.lon, snapped.lat],
-        animationDuration: 500,
+        animationDuration: 350,
       });
 
       await recalcRouteFor(next);
@@ -177,7 +252,6 @@ export default function MapScreen() {
 
   const removeWaypoint = async (index: number) => {
     if (busy) return;
-
     const next = waypoints.filter((_, i) => i !== index);
     setWaypoints(next);
     await recalcRouteFor(next);
@@ -187,7 +261,7 @@ export default function MapScreen() {
     stopFollowing();
     setWaypoints([]);
     setRouteFeature(null);
-    setMessage("Reset. Tap again to add waypoints.");
+    setMessage("Reset. Hold on the map to add waypoints.");
   };
 
   const zoomIn = () => {
@@ -210,7 +284,6 @@ export default function MapScreen() {
 
   const centerOnMe = () => {
     if (!pos) return;
-
     setFollowMe(true);
     cameraRef.current?.setCamera({
       centerCoordinate: [pos.lon, pos.lat],
@@ -224,8 +297,7 @@ export default function MapScreen() {
       setMessage("Add at least 2 waypoints before saving.");
       return;
     }
-    const defaultName = `Route ${new Date().toLocaleString()}`;
-    setRouteNameDraft(defaultName);
+    setRouteNameDraft(`Route ${new Date().toLocaleString()}`);
     setShowSaveModal(true);
   };
 
@@ -269,7 +341,6 @@ export default function MapScreen() {
     }
   };
 
-
   const overlayActive = !!savedRouteOverlay;
 
   const openSavedRoutes = () => {
@@ -304,8 +375,57 @@ export default function MapScreen() {
         routeFeature={routeFeature}
         savedRouteFeature={savedRouteOverlay?.routeFeature ?? null}
         savedRouteWaypoints={savedRouteOverlay?.waypoints ?? []}
+        exploreCenter={exploreCenter}
+        explorePlaces={explorePlaces.map((p) => ({
+          id: p.id,
+          name: p.name,
+          lon: p.lon,
+          lat: p.lat,
+          category: p.category,
+        }))}
+        onExplorePlacePress={(p) => {
+          stopFollowing();
+
+          cameraRef.current?.setCamera({
+            centerCoordinate: [p.lon, p.lat],
+            animationDuration: 350,
+          });
+
+          const full = explorePlaces.find((x) => x.id === p.id);
+          if (full) {
+            setSelectedExplore(full);
+            ensurePlaceCtx(full);
+          }
+        }}
         onMapPress={(lon, lat) => {
           if (overlayActive) return;
+
+          if (explorePinMode) {
+            setExploreCenter({ lon, lat });
+            setExploreCenterLabel(`Pinned location (${lat.toFixed(5)}, ${lon.toFixed(5)})`);
+            setExplorePinMode(false);
+
+            cameraRef.current?.setCamera({
+              centerCoordinate: [lon, lat],
+              animationDuration: 250,
+            });
+          }
+        }}
+        onMapLongPress={(lon, lat) => {
+          if (overlayActive) return;
+
+          if (explorePinMode) {
+            setExploreCenter({ lon, lat });
+            setExploreCenterLabel(`Pinned location (${lat.toFixed(5)}, ${lon.toFixed(5)})`);
+            setExplorePinMode(false);
+
+            cameraRef.current?.setCamera({
+              centerCoordinate: [lon, lat],
+              animationDuration: 250,
+            });
+            return;
+          }
+
           addWaypointFromTap(lon, lat);
         }}
         onZoomChanged={(z) => {
@@ -313,7 +433,6 @@ export default function MapScreen() {
           if (followMe) setFollowMe(false);
         }}
       />
-
 
       <TopWaypointsDropdown
         waypoints={waypoints}
@@ -325,6 +444,28 @@ export default function MapScreen() {
         onReset={reset}
         onSaveRoute={openSaveModal}
         canSaveRoute={!!routeFeature && waypoints.length >= 2}
+      />
+
+      <ExploreDropdown
+        pos={pos}
+        center={exploreCenter}
+        centerLabel={exploreCenterLabel}
+        onChangeCenter={(c, label) => {
+          setExploreCenter(c);
+          setExploreCenterLabel(label);
+          setExplorePinMode(false);
+        }}
+        onResults={(places) => {
+          setExplorePlaces(places);
+          if (exploreCenter) {
+            cameraRef.current?.setCamera({
+              centerCoordinate: [exploreCenter.lon, exploreCenter.lat],
+              animationDuration: 200,
+            });
+          }
+        }}
+        pinMode={explorePinMode}
+        onPinModeChange={setExplorePinMode}
       />
 
       <BottomRouteDropdown
@@ -342,14 +483,77 @@ export default function MapScreen() {
         <Pressable style={styles.savedBtn} onPress={openSavedRoutes}>
           <Text style={styles.savedBtnText}>Saved routes</Text>
         </Pressable>
-        <Pressable
-          style={[styles.savedBtn, !overlayActive && { opacity: 0.4 }]}
-          onPress={clearOverlay}
-          disabled={!overlayActive}
-        >
+        <Pressable style={[styles.savedBtn, !overlayActive && { opacity: 0.4 }]} onPress={clearOverlay} disabled={!overlayActive}>
           <Text style={styles.savedBtnText}>Clear</Text>
         </Pressable>
       </View>
+
+      <Modal visible={!!selectedExplore} transparent animationType="fade" onRequestClose={() => setSelectedExplore(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{selectedExplore?.name ?? ""}</Text>
+
+            {selectedExplore && (
+              <>
+                <Text style={{ marginTop: 6, opacity: 0.75 }}>
+                  {formatAddress(selectedExplore.tags) || `${selectedExplore.lat.toFixed(5)}, ${selectedExplore.lon.toFixed(5)}`}
+                </Text>
+
+                {(() => {
+                  const t = describePlaceType(selectedExplore.tags);
+                  return (
+                    <Text style={{ marginTop: 6, opacity: 0.9, fontWeight: "900" }}>
+                      Type: {t.label}
+                      {t.sourceKey ? ` (${t.sourceKey})` : ""}
+                    </Text>
+                  );
+                })()}
+
+                <View style={styles.linkRow}>
+                  <Pressable style={[styles.linkBtn, styles.linkBtnDark]} onPress={() => openUrl(googleSearchUrl(selectedExplore))}>
+                    <Text style={styles.linkBtnTextDark}>Google</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+
+            <View style={styles.saveActions}>
+              <Pressable style={[styles.actionBtn, styles.actionSecondary]} onPress={() => setSelectedExplore(null)}>
+                <Text style={[styles.actionText, styles.actionSecondaryText]}>Close</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.actionBtn, styles.actionPrimary]}
+                onPress={() => {
+                  if (!selectedExplore) return;
+
+                  addWaypointFromSearch({
+                    lon: selectedExplore.lon,
+                    lat: selectedExplore.lat,
+                    region: selectedExplore.name,
+                    country: selectedExplore.tags["addr:country"] || selectedExplore.tags["is_in:country"],
+                  });
+
+                  const info = pickUsefulInfo(selectedExplore.tags);
+
+                  setSelectedExplore(null);
+
+                  if (info.website) {
+                    Alert.alert("Added", "Added to route. Open website?", [
+                      { text: "No" },
+                      { text: "Open", onPress: () => openUrl(info.website!) },
+                    ]);
+                  } else {
+                    Alert.alert("Added", "Added to route.", [{ text: "OK" }]);
+                  }
+                }}
+              >
+                <Text style={[styles.actionText, styles.actionPrimaryText]}>Add to route</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showSavedRoutes} transparent animationType="fade" onRequestClose={() => setShowSavedRoutes(false)}>
         <View style={styles.modalBackdrop}>
@@ -385,10 +589,7 @@ export default function MapScreen() {
       </Modal>
 
       <Modal visible={showSaveModal} transparent animationType="fade" onRequestClose={() => setShowSaveModal(false)}>
-        <KeyboardAvoidingView
-          style={styles.modalBackdrop}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardAvoidingView style={styles.modalBackdrop} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={styles.saveCard}>
             <Text style={styles.modalTitle}>Save route</Text>
 
@@ -500,4 +701,18 @@ const styles = StyleSheet.create({
   actionPrimaryText: { color: "white" },
   actionSecondary: { backgroundColor: "#f2f2f2" },
   actionSecondaryText: { color: "black" },
+
+  linkRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 12,
+  },
+  linkBtn: {
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  linkBtnDark: { backgroundColor: "black" },
+  linkBtnTextDark: { color: "white", fontWeight: "900" },
 });
