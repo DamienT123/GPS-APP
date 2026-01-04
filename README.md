@@ -20,13 +20,7 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    or
    npx expo start --dev-client
   
-  run
-   npx expo run:android
-   or
-    npx react-native run-android 
-    to rebuild dev build when changing core elements
-
-   ```
+  
 
 In the output, you'll find options to open the app in a
 

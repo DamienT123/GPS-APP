@@ -163,3 +163,67 @@ export function listDirtyRoutes(ownerUid?: string | null) {
   const rows = db.getAllSync(`SELECT * FROM routes ${whereSql}`, args);
   return rows.map(rowToRoute);
 }
+
+export type SavedRouteLite = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  profile: RouteProfile;
+  distanceMeters?: number;
+  durationSeconds?: number;
+  ownerUid?: string | null;
+  dirty: boolean;
+  lastSyncedAt?: string | null;
+  deletedAt?: string | null;
+};
+
+function rowToRouteLite(row: any): SavedRouteLite {
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    profile: row.profile,
+    distanceMeters: row.distanceMeters ?? undefined,
+    durationSeconds: row.durationSeconds ?? undefined,
+    ownerUid: row.ownerUid ?? null,
+    dirty: row.dirty === 1,
+    lastSyncedAt: row.lastSyncedAt ?? null,
+    deletedAt: row.deletedAt ?? null,
+  };
+}
+
+export function listRoutesLite(opts?: { includeDeleted?: boolean; ownerUid?: string | null }) {
+  const includeDeleted = opts?.includeDeleted ?? false;
+  const ownerUid = opts?.ownerUid ?? null;
+
+  const where: string[] = [];
+  const args: any[] = [];
+
+  if (!includeDeleted) where.push("deletedAt IS NULL");
+  if (ownerUid !== null) {
+    where.push("ownerUid = ?");
+    args.push(ownerUid);
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  const rows = db.getAllSync(
+    `
+    SELECT
+      id, name, createdAt, updatedAt, profile,
+      distanceMeters, durationSeconds,
+      ownerUid, dirty, lastSyncedAt, deletedAt
+    FROM routes
+    ${whereSql}
+    ORDER BY datetime(createdAt) DESC
+    `,
+    args
+  );
+
+  return rows.map(rowToRouteLite);
+}
+
+
+
