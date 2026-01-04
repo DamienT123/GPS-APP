@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import type { Waypoint } from "../../types/mapTypes";
 import { MapOverlay } from "./MapOverlay";
+import { IconSymbol } from "../ui/icon-symbol";
 
 type TopWaypointsDropdownProps = {
   waypoints: Waypoint[];
@@ -62,6 +63,7 @@ export function TopWaypointsDropdown({
   const [results, setResults] = useState<NominatimResult[]>([]);
 
   const openSheet = () => setOpen(true);
+
   const closeSheet = () => {
     setOpen(false);
     setQuery("");
@@ -126,111 +128,151 @@ export function TopWaypointsDropdown({
   }, [query, open]);
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-      {!open && (
-        <Pressable
-          style={[styles.topIconBtn, { top: SAFE_TOP_OFFSET, left: 12 }]}
-          onPress={openSheet}
-          hitSlop={12}
-        >
-          <Text style={styles.iconText}>🌍</Text>
-        </Pressable>
-      )}
+   <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+    {!open && (
+      <Pressable
+        style={[styles.fab, { top: SAFE_TOP_OFFSET +8, left: 12 }]}
+        onPress={openSheet}
+        hitSlop={12}
+      >
+        <IconSymbol
+          name="globe.europe.africa.fill"
+          size={20}
+          color="white"
+        />
+      </Pressable>
+    )}
+
 
       {open && (
-        <View style={[styles.topPanel, { top: SAFE_TOP_OFFSET }]} pointerEvents="auto">
-          <View style={styles.searchRow}>
+        <View style={[styles.sheet, { top: SAFE_TOP_OFFSET }]} pointerEvents="auto">
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Waypoints</Text>
+            <Pressable onPress={closeSheet} hitSlop={10}>
+              <Text style={styles.close}>Close</Text>
+            </Pressable>
+          </View>
+
+          {/* Search Card */}
+          <View style={styles.card}>
+            <View style={styles.cardTopRow}>
+              <Text style={styles.cardLabel}>Add</Text>
+              <Text numberOfLines={1} style={styles.cardValue}>
+                Search a location
+              </Text>
+            </View>
+
             <TextInput
               value={query}
               onChangeText={setQuery}
               placeholder="Search location…"
               autoCorrect={false}
               autoCapitalize="none"
-              style={styles.searchInput}
+              style={styles.input}
             />
-            <Text style={styles.searchStatus}>{searchBusy ? "…" : ""}</Text>
-          </View>
 
-          {results.length > 0 && (
-            <View style={styles.resultsBox}>
-              {results.map((r) => (
-                <Pressable key={r.place_id} onPress={() => pickResult(r)} style={styles.resultItem}>
-                  <Text numberOfLines={2} style={styles.resultText}>
-                    {r.display_name}
-                  </Text>
-                </Pressable>
-              ))}
+            <View style={styles.inlineStatusRow}>
+              <Text style={styles.miniStatus}>{searchBusy ? "…" : ""}</Text>
             </View>
-          )}
 
-          <FlatList
-            data={waypoints}
-            keyExtractor={(w) => w.id}
-            ListEmptyComponent={<Text style={styles.empty}>No waypoints yet.</Text>}
-            renderItem={({ item, index }) => (
-              <View style={styles.wpRow}>
-                <Text style={styles.wpText}>
-                  {index + 1}.{" "}
-                  {item.country
-                    ? item.region
-                      ? `${item.region}, ${item.country}`
-                      : item.country
-                    : `${item.lat.toFixed(5)}, ${item.lon.toFixed(5)}`}
-                </Text>
-
-                <View style={styles.wpActions}>
+            {results.length > 0 && (
+              <View style={styles.resultsBox}>
+                {results.map((r) => (
                   <Pressable
-                    onPress={() => onMoveUp(index)}
-                    disabled={busy || index === 0}
-                    style={[styles.wpBtn, (busy || index === 0) && styles.wpBtnDisabled]}
+                    key={r.place_id}
+                    onPress={() => pickResult(r)}
+                    style={styles.resultItem}
                   >
-                    <Text style={styles.wpBtnText}>↑</Text>
+                    <Text numberOfLines={2} style={styles.resultText}>
+                      {r.display_name}
+                    </Text>
                   </Pressable>
-
-                  <Pressable
-                    onPress={() => onMoveDown(index)}
-                    disabled={busy || index === waypoints.length - 1}
-                    style={[
-                      styles.wpBtn,
-                      (busy || index === waypoints.length - 1) && styles.wpBtnDisabled,
-                    ]}
-                  >
-                    <Text style={styles.wpBtnText}>↓</Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => onRemove(index)}
-                    disabled={busy}
-                    style={[styles.wpBtn, busy && styles.wpBtnDisabled]}
-                  >
-                    <Text style={styles.wpBtnText}>✕</Text>
-                  </Pressable>
-                </View>
+                ))}
               </View>
             )}
-          />
+          </View>
 
-          <View style={styles.topActionsRow}>
-            <Pressable
-              onPress={onSaveRoute}
-              disabled={!canSaveRoute || busy}
-              style={[styles.actionBtn, (!canSaveRoute || busy) && styles.actionBtnDisabled]}
-            >
-              <Text style={styles.actionBtnText}>Save</Text>
-            </Pressable>
+          {/* Waypoints list (Card) */}
+          <View style={styles.card}>
+            <View style={styles.cardTopRow}>
+              <Text style={styles.cardLabel}>List</Text>
+              <Text numberOfLines={1} style={styles.cardValue}>
+                {waypoints.length ? `${waypoints.length} waypoint(s)` : "No waypoints yet"}
+              </Text>
+            </View>
 
+            <FlatList
+              data={waypoints}
+              keyExtractor={(w) => w.id}
+              ListEmptyComponent={<Text style={styles.empty}>No waypoints yet.</Text>}
+              renderItem={({ item, index }) => (
+                <View style={styles.wpRow}>
+                  <Text style={styles.wpText}>
+                    {index + 1}.{" "}
+                    {item.country
+                      ? item.region
+                        ? `${item.region}, ${item.country}`
+                        : item.country
+                      : `${item.lat.toFixed(5)}, ${item.lon.toFixed(5)}`}
+                  </Text>
+
+                  <View style={styles.wpActions}>
+                    <Pressable
+                      onPress={() => onMoveUp(index)}
+                      disabled={busy || index === 0}
+                      style={[styles.iconBtn, (busy || index === 0) && styles.btnDisabled]}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.iconBtnText}>↑</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => onMoveDown(index)}
+                      disabled={busy || index === waypoints.length - 1}
+                      style={[
+                        styles.iconBtn,
+                        (busy || index === waypoints.length - 1) && styles.btnDisabled,
+                      ]}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.iconBtnText}>↓</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => onRemove(index)}
+                      disabled={busy}
+                      style={[styles.iconBtn, busy && styles.btnDisabled]}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.iconBtnText}>✕</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+            />
+          </View>
+
+          {/* Bottom actions */}
+          <View style={styles.bottomBar}>
             <Pressable
               onPress={onReset}
               disabled={busy}
-              style={[styles.actionBtn, busy && styles.actionBtnDisabled]}
+              style={[styles.bottomBtn, styles.bottomBtnLight, busy && styles.btnDisabled]}
             >
-              <Text style={styles.actionBtnText}>Reset</Text>
+              <Text style={[styles.bottomBtnText, styles.bottomBtnTextDark]}>Reset</Text>
             </Pressable>
-          </View>
 
-          <View style={styles.closeArea}>
-            <Pressable style={styles.closeBtn} onPress={closeSheet} hitSlop={12}>
-              <Text style={styles.iconText}>🌍</Text>
+            <Pressable
+              onPress={onSaveRoute}
+              disabled={!canSaveRoute || busy}
+              style={[
+                styles.bottomBtn,
+                styles.bottomBtnDark,
+                (!canSaveRoute || busy) && styles.btnDisabled,
+              ]}
+            >
+              <Text style={[styles.bottomBtnText, styles.bottomBtnTextLight]}>Save</Text>
             </Pressable>
           </View>
         </View>
@@ -262,31 +304,41 @@ export function BottomRouteDropdown(props: BottomRouteDropdownProps) {
     <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
       {!open && (
         <Pressable
-          style={[styles.bottomIconBtn, { bottom: SAFE_BOTTOM_OFFSET }]}
+          style={[styles.fabWide, { bottom: SAFE_BOTTOM_OFFSET }]}
           onPress={openSheet}
           hitSlop={12}
         >
-          <Text style={styles.iconText}>⚙️</Text>
+          <IconSymbol
+            name="gearshape.fill"
+            size={20}
+            color="white"
+          />
         </Pressable>
       )}
 
-      {open && (
-        <View style={[styles.bottomPanel, { bottom: SAFE_BOTTOM_OFFSET }]} pointerEvents="auto">
-          <MapOverlay
-            message={props.message}
-            zoomLevel={props.zoomLevel}
-            followMe={props.followMe}
-            busy={props.busy}
-            canCenterOnMe={props.canCenterOnMe}
-            onZoomOut={props.onZoomOut}
-            onZoomIn={props.onZoomIn}
-            onCenterOnMe={props.onCenterOnMe}
-          />
 
-          <View style={styles.closeArea}>
-            <Pressable style={styles.closeBtn} onPress={closeSheet} hitSlop={12}>
-              <Text style={styles.iconText}>⚙️</Text>
+      {open && (
+        <View style={[styles.sheet, { bottom: SAFE_BOTTOM_OFFSET }]} pointerEvents="auto">
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Map</Text>
+            <Pressable onPress={closeSheet} hitSlop={10}>
+              <Text style={styles.close}>Close</Text>
             </Pressable>
+          </View>
+
+          {/* Overlay content (Card) */}
+          <View style={styles.card}>
+            <MapOverlay
+              message={props.message}
+              zoomLevel={props.zoomLevel}
+              followMe={props.followMe}
+              busy={props.busy}
+              canCenterOnMe={props.canCenterOnMe}
+              onZoomOut={props.onZoomOut}
+              onZoomIn={props.onZoomIn}
+              onCenterOnMe={props.onCenterOnMe}
+            />
           </View>
         </View>
       )}
@@ -295,175 +347,152 @@ export function BottomRouteDropdown(props: BottomRouteDropdownProps) {
 }
 
 const styles = StyleSheet.create({
-  topIconBtn: {
+  fab: {
     position: "absolute",
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: "rgba(0,0,0,0.80)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 9999,
     elevation: 9999,
   },
-
-  bottomIconBtn: {
+  fabWide: {
     position: "absolute",
     alignSelf: "center",
     width: 52,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: "rgba(0,0,0,0.80)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 9999,
     elevation: 9999,
   },
+  fabText: { color: "white", fontSize: 20, fontWeight: "900" },
 
-  iconText: {
-    color: "white",
-    fontSize: 20,
-    fontWeight: "900",
-  },
-
-  topPanel: {
+  sheet: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(200,200,200,0.95)",
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 8,
+    left: 12,
+    right: 12,
+    backgroundColor: "rgba(245,245,245,0.98)",
+    borderRadius: 16,
+    padding: 12,
     zIndex: 9999,
     elevation: 9999,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
 
-  bottomPanel: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(200,200,200,0.95)",
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 8,
-    zIndex: 9999,
-    elevation: 9999,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 2,
+    marginBottom: 10,
   },
+  title: { fontSize: 16, fontWeight: "900" },
+  close: { fontWeight: "900", opacity: 0.7 },
 
-  searchRow: {
+  card: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(0,0,0,0.10)",
+    marginBottom: 10,
+  },
+  cardTopRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 8,
   },
+  cardLabel: { width: 44, opacity: 0.8, fontWeight: "800" },
+  cardValue: { flex: 1, fontWeight: "900" },
 
-  searchInput: {
-    flex: 1,
-    backgroundColor: "white",
-    borderRadius: 10,
+  input: {
+    backgroundColor: "rgba(0,0,0,0.04)",
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(0,0,0,0.10)",
   },
 
-  searchStatus: {
-    width: 18,
-    textAlign: "center",
-    opacity: 0.8,
+  inlineStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
   },
+  miniStatus: { marginLeft: "auto", width: 18, textAlign: "center", opacity: 0.7 },
 
+  // Results (Explore-like)
   resultsBox: {
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 10,
-    marginBottom: 10,
+    marginTop: 10,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderRadius: 12,
     overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(0,0,0,0.08)",
   },
-
   resultItem: {
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.15)",
+    borderBottomColor: "rgba(0,0,0,0.10)",
   },
+  resultText: { fontSize: 13 },
 
-  resultText: {
-    fontSize: 13,
-  },
-
-  empty: {
-    paddingVertical: 8,
-    opacity: 0.7,
-  },
+  // Waypoints list rows
+  empty: { paddingVertical: 8, opacity: 0.7 },
 
   wpRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
+  wpText: { flex: 1, marginRight: 10 },
 
-  wpText: {
-    flex: 1,
-    marginRight: 8,
-  },
+  wpActions: { flexDirection: "row", gap: 8 },
 
-  wpActions: {
-    flexDirection: "row",
-    gap: 6,
-  },
-
-  wpBtn: {
+  iconBtn: {
+    backgroundColor: "black",
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "black",
-  },
-
-  wpBtnDisabled: {
-    opacity: 0.35,
-  },
-
-  wpBtnText: {
-    color: "white",
-    fontWeight: "700",
-  },
-
-  topActionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-    marginTop: 10,
-  },
-
-  actionBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: "black",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  actionBtnDisabled: {
-    opacity: 0.35,
-  },
-
-  actionBtnText: {
-    color: "white",
-    fontWeight: "800",
-  },
-
-  closeArea: {
-    alignItems: "center",
-    paddingTop: 8,
-    paddingBottom: 6,
-  },
-
-  closeBtn: {
-    width: 44,
-    height: 44,
+    paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    minWidth: 36,
     alignItems: "center",
     justifyContent: "center",
   },
+  iconBtnText: { color: "white", fontWeight: "900" },
+
+  // Bottom bar buttons (Explore-like)
+  bottomBar: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 2,
+  },
+  bottomBtn: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bottomBtnDark: { backgroundColor: "black" },
+  bottomBtnLight: {
+    backgroundColor: "white",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(0,0,0,0.15)",
+  },
+  bottomBtnText: { fontWeight: "900" },
+  bottomBtnTextLight: { color: "white" },
+  bottomBtnTextDark: { color: "black" },
+
+  btnDisabled: { opacity: 0.5 },
 });

@@ -22,8 +22,8 @@ export default function TabLayout() {
         name="mapTab"
         options={{
           title: "Map",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="map.fill" color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <IconSymbol name="map.fill" size={size ?? 28} color={color} />
           ),
         }}
       />
@@ -32,8 +32,8 @@ export default function TabLayout() {
         name="routesTab"
         options={{
           title: "Routes",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="bookmark.fill" color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <IconSymbol name="route.fill" size={size ?? 28} color={color} />
           ),
         }}
       />

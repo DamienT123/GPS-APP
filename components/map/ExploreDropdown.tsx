@@ -15,6 +15,7 @@ import {
   type ExplorePlace,
 } from "../../services/overpassService";
 import type { LonLat } from "../../types/mapTypes";
+import { IconSymbol } from "../ui/icon-symbol";
 
 type Props = {
   pos: LonLat | null;
@@ -123,9 +124,8 @@ export function ExploreDropdown({
     setStartResults([]);
     setStartBusy(false);
 
-    // kies wat jij wil resetten:
-    onResults([]); // wist pins op kaart
-    onChangeCenter(pos ?? null, pos ? "Current location" : ""); // of: onChangeCenter(null,"")
+    onResults([]); 
+    onChangeCenter(pos ?? null, pos ? "Current location" : ""); 
 
     setRadiusKm(DEFAULT_RADIUS_KM);
     setSelected(DEFAULT_SELECTED);
@@ -198,17 +198,21 @@ export function ExploreDropdown({
   };
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-      {!open && (
-        <Pressable
-          style={[styles.fab, { top: SAFE_TOP_OFFSET + 100, right: 12 }]}
-          onPress={openSheet}
-          hitSlop={12}
-        >
-          <Text style={styles.fabText}>🧭</Text>
-        </Pressable>
-      )}
-
+   <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+    {!open && (
+      <Pressable
+        style={[styles.fab, { top: SAFE_TOP_OFFSET + 80, left: 12 }]}
+        onPress={openSheet}
+        hitSlop={12}
+      >
+        <IconSymbol
+          name="location.magnifyingglass"
+          size={20}
+          color="white"
+        />
+      </Pressable>
+    )}
+ 
       {open && (
         <View style={[styles.sheet, { top: SAFE_TOP_OFFSET }]} pointerEvents="auto">
           {/* Header */}
