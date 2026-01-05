@@ -2,18 +2,24 @@ import { useEffect, useState } from "react";
 import * as Location from "expo-location";
 import type { LonLat } from "../types/mapTypes";
 
+
+
 type UseLiveLocationResult = {
   pos: LonLat | null;
   error: string | null;
   hasPermission: boolean;
 };
 
+
 export function useLiveLocation(): UseLiveLocationResult {
+
   const [pos, setPos] = useState<LonLat | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState(false);
 
+
   useEffect(() => {
+    
     let sub: Location.LocationSubscription | null = null;
     let mounted = true;
 
@@ -35,12 +41,13 @@ export function useLiveLocation(): UseLiveLocationResult {
         });
 
         if (!mounted) return;
-        //requestAnimationFrame is used to avoid potential setState during render warnings
+
         requestAnimationFrame(() => {
         setPos({ lon: current.coords.longitude, lat: current.coords.latitude });
         });
 
         sub = await Location.watchPositionAsync(
+
           { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
           (loc) => {
             if (!mounted) return;

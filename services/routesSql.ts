@@ -4,6 +4,7 @@ import type { Waypoint, RouteFeature } from "../types/mapTypes";
 export type RouteProfile = "walking" | "driving" | "cycling";
 
 export type SavedRoute = {
+
   id: string;
   name: string;
   createdAt: string;
@@ -23,6 +24,7 @@ export type SavedRoute = {
 };
 
 function rowToRoute(row: any): SavedRoute {
+  
   return {
     id: row.id,
     name: row.name,
@@ -71,6 +73,7 @@ export function createRoute(input: {
 }
 
 export function saveRoute(route: SavedRoute) {
+
   db.runSync(
     `INSERT OR REPLACE INTO routes
      (id, name, createdAt, updatedAt, profile, waypointsJson, routeGeoJson, distanceMeters, durationSeconds, ownerUid, dirty, lastSyncedAt, deletedAt)
@@ -94,19 +97,24 @@ export function saveRoute(route: SavedRoute) {
 }
 
 export function listRoutes(opts?: { includeDeleted?: boolean; ownerUid?: string | null }) {
+
+
   const includeDeleted = opts?.includeDeleted ?? false;
   const ownerUid = opts?.ownerUid ?? null;
 
   const where: string[] = [];
   const args: any[] = [];
 
+
   if (!includeDeleted) {
     where.push("deletedAt IS NULL");
   }
+
   if (ownerUid !== null) {
     where.push("ownerUid = ?");
     args.push(ownerUid);
   }
+
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
@@ -115,23 +123,32 @@ export function listRoutes(opts?: { includeDeleted?: boolean; ownerUid?: string 
     args
   );
 
+
+
   return rows.map(rowToRoute);
+
 }
 
+
 export function getRoute(id: string): SavedRoute | null {
+
   const row = db.getFirstSync(`SELECT * FROM routes WHERE id = ?`, [id]);
   return row ? rowToRoute(row) : null;
+
 }
 
 export function renameRoute(id: string, name: string) {
-  const now = new Date().toISOString();
-  db.runSync(
-    `UPDATE routes SET name = ?, updatedAt = ?, dirty = 1 WHERE id = ?`,
-    [name, now, id]
+
+
+    const now = new Date().toISOString();
+    db.runSync(
+      `UPDATE routes SET name = ?, updatedAt = ?, dirty = 1 WHERE id = ?`,
+      [name, now, id]
   );
 }
 
 export function softDeleteRoute(id: string) {
+
   const now = new Date().toISOString();
   db.runSync(
     `UPDATE routes SET deletedAt = ?, updatedAt = ?, dirty = 1 WHERE id = ?`,
@@ -140,14 +157,17 @@ export function softDeleteRoute(id: string) {
 }
 
 export function hardDeleteRoute(id: string) {
+
   db.runSync(`DELETE FROM routes WHERE id = ?`, [id]);
 }
 
 export function markSynced(id: string) {
+
   const now = new Date().toISOString();
   db.runSync(
     `UPDATE routes SET dirty = 0, lastSyncedAt = ? WHERE id = ?`,
     [now, id]
+
   );
 }
 

@@ -3,7 +3,7 @@ import * as SQLite from "expo-sqlite";
 export const db = SQLite.openDatabaseSync("gpsapp.db");
 
 export function initDb() {
-  // 1) routes table
+ 
   db.execSync(`
     PRAGMA journal_mode = WAL;
 

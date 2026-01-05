@@ -1,9 +1,11 @@
 export type OverpassElement = {
+
   type: "node" | "way" | "relation";
   id: number;
   lat?: number;
   lon?: number;
   center?: { lat: number; lon: number };
+
   tags?: Record<string, string>;
 };
 
@@ -14,6 +16,7 @@ export type OverpassResponse = {
 export type ExploreCategory = "sights" | "hotels" | "nature" | "cafes" | "restaurants";
 
 export type ExplorePlace = {
+
   id: string;
   source: "osm";
   name: string;
@@ -25,6 +28,7 @@ export type ExplorePlace = {
 };
 
 export type PlaceContext = {
+
   city?: string;
   town?: string;
   village?: string;
@@ -42,10 +46,12 @@ export type PlaceContext = {
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 
 function toRad(n: number) {
+
   return (n * Math.PI) / 180;
 }
 
 function haversineMeters(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+
   const R = 6371000;
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
@@ -60,18 +66,23 @@ function haversineMeters(a: { lat: number; lon: number }, b: { lat: number; lon:
 }
 
 function getElementLonLat(el: OverpassElement): { lon: number; lat: number } | null {
+
   if (typeof el.lat === "number" && typeof el.lon === "number") return { lat: el.lat, lon: el.lon };
+  
   if (el.center && typeof el.center.lat === "number" && typeof el.center.lon === "number")
     return { lat: el.center.lat, lon: el.center.lon };
   return null;
 }
 
 function bestName(tags?: Record<string, string>) {
+  
   const t = tags || {};
+  
   return (t.name || t["name:en"] || t["name:nl"] || "").trim();
 }
 
 function filterBlockForCategory(cat: ExploreCategory, radius: number, lat: number, lon: number) {
+  
   const around = `(around:${Math.round(radius)},${lat},${lon})`;
 
   if (cat === "cafes") {
@@ -81,12 +92,15 @@ function filterBlockForCategory(cat: ExploreCategory, radius: number, lat: numbe
     `;
   }
 
+
+
   if (cat === "restaurants") {
     return `
       nwr["amenity"="restaurant"]${around};
       nwr["amenity"="fast_food"]${around};
     `;
   }
+
 
   if (cat === "hotels") {
     return `
@@ -95,6 +109,7 @@ function filterBlockForCategory(cat: ExploreCategory, radius: number, lat: numbe
       nwr["tourism"="guest_house"]${around};
     `;
   }
+
 
   if (cat === "nature") {
     return `
@@ -107,6 +122,7 @@ function filterBlockForCategory(cat: ExploreCategory, radius: number, lat: numbe
       nwr["natural"="spring"]${around};
     `;
   }
+
 
   return `
     nwr["tourism"="attraction"]${around};
@@ -122,6 +138,7 @@ function filterBlockForCategory(cat: ExploreCategory, radius: number, lat: numbe
 }
 
 function inferCategoryFromTags(tags: Record<string, string>): ExploreCategory {
+ 
   const amenity = tags.amenity;
   const tourism = tags.tourism;
   const natural = tags.natural;
@@ -164,12 +181,14 @@ export async function overpassQuery(query: string): Promise<OverpassResponse> {
 }
 
 export async function searchNearbyOSM(params: {
+
   center: { lat: number; lon: number };
   radiusMeters: number;
   categories: ExploreCategory[];
   limit?: number;
   withDistance?: boolean;
 }): Promise<ExplorePlace[]> {
+  
   const { center, radiusMeters, categories } = params;
   const limit = params.limit ?? 250;
   const withDistance = params.withDistance ?? true;
@@ -285,6 +304,7 @@ function firstExistingTag(tags: Record<string, string>) {
   return null;
 }
 
+
 export function describePlaceType(tags: Record<string, string>) {
   const base = firstExistingTag(tags);
 
@@ -329,17 +349,21 @@ export function bestCityFromContext(a: PlaceContext | null) {
   return (a.city || a.town || a.village || a.municipality || a.suburb || a.county || a.state || "").trim();
 }
 
-export async function reverseGeocodeOSM(lat: number, lon: number): Promise<PlaceContext | null> {
-  const url =
-    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&accept-language=en` +
-    `&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
 
-  const res = await fetch(url, {
-    headers: { "User-Agent": "gps-app-student-project" },
-  });
+export async function reverseGeocodeOSM(lat: number, lon: number): Promise<PlaceContext | null> {
+  
+      const url =
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&accept-language=en` +
+        `&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+
+      const res = await fetch(url, {
+        headers: { "User-Agent": "gps-app-student-project" },
+      });
 
   if (!res.ok) return null;
 
   const data = await res.json();
   return (data?.address ?? null) as PlaceContext | null;
+
+
 }

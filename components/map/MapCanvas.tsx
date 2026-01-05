@@ -22,7 +22,7 @@ type Props = {
   cameraRef: React.RefObject<any>;
   pos: LonLat | null;
 
-  
+
 
   waypoints: Waypoint[];
   routeFeature: RouteFeature | null;
@@ -41,6 +41,7 @@ type Props = {
 };
 
 function exploreColor(cat?: ExploreCategory) {
+  
   if (cat === "restaurants") return "#DC2626";
   if (cat === "cafes") return "#F59E0B";
   if (cat === "hotels") return "#8B5CF6";
@@ -49,14 +50,17 @@ function exploreColor(cat?: ExploreCategory) {
 }
 
 function exploreLabel(cat?: ExploreCategory) {
+
   if (cat === "restaurants") return "R";
   if (cat === "cafes") return "C";
   if (cat === "hotels") return "H";
   if (cat === "nature") return "N";
+
   return "★";
 }
 
 export function MapCanvas({
+
   cameraRef,
   pos,
   waypoints,
@@ -71,6 +75,7 @@ export function MapCanvas({
   onMapReady,
   onZoomChanged,
 }: Props) {
+  
   return (
     <MapView
       style={styles.map}
@@ -90,7 +95,9 @@ export function MapCanvas({
         const [lon, lat] = coords as [number, number];
         onMapPress?.(lon, lat);
       }}
+
       onLongPress={(e: any) => {
+
         const coords = e?.geometry?.coordinates;
         if (!coords) return;
         const [lon, lat] = coords as [number, number];
@@ -107,7 +114,8 @@ export function MapCanvas({
 
       {pos && <UserMarker pos={pos} />}
 
-      {savedRouteFeature && <RouteLayer feature={savedRouteFeature} idPrefix="saved" variant="saved" />}
+      {savedRouteFeature && <RouteLayer feature={savedRouteFeature} 
+      idPrefix="saved" variant="saved" />}
 
       {savedRouteWaypoints.map((wp, index) => (
         <PointAnnotation
@@ -132,6 +140,7 @@ export function MapCanvas({
           coordinate={[p.lon, p.lat]}
           onSelected={() => onExplorePlacePress?.(p)}
         >
+
           <View style={[styles.exploreDot, { backgroundColor: exploreColor(p.category) }]}>
             <Text style={styles.exploreDotText}>{exploreLabel(p.category)}</Text>
           </View>
@@ -148,6 +157,7 @@ export function MapCanvas({
 }
 
 const styles = StyleSheet.create({
+
   map: { flex: 1 },
 
   savedDot: {
@@ -160,6 +170,7 @@ const styles = StyleSheet.create({
   },
 
   exploreCenterDot: {
+    
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -173,7 +184,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
+
   exploreDot: {
+
     width: 26,
     height: 26,
     borderRadius: 13,
@@ -187,6 +200,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 5,
   },
+
 
   exploreDotText: {
     color: "white",

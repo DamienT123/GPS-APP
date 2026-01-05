@@ -8,25 +8,30 @@ import type { SavedRoute } from "../../services/routesSql";
 type LonLat = [number, number];
 
 function extractLineCoords(routeFeature: any): LonLat[] {
+
   const g = routeFeature?.geometry;
   if (!g) return [];
 
   if (g.type === "LineString") return (g.coordinates ?? []) as LonLat[];
 
   if (g.type === "MultiLineString") {
+
     const parts = (g.coordinates ?? []) as LonLat[][];
     return parts.flat();
   }
 
   if (g.type === "GeometryCollection") {
+
     const out: LonLat[] = [];
     for (const gg of g.geometries ?? []) {
       if (gg?.type === "LineString") out.push(...((gg.coordinates ?? []) as LonLat[]));
       if (gg?.type === "MultiLineString") {
         const parts = (gg.coordinates ?? []) as LonLat[][];
         out.push(...parts.flat());
+
       }
     }
+
     return out;
   }
 
@@ -34,12 +39,14 @@ function extractLineCoords(routeFeature: any): LonLat[] {
 }
 
 function buildPath(coords: LonLat[], size: number, pad = 3) {
+
   if (coords.length < 2) return "";
 
   let minX = Infinity,
     minY = Infinity,
     maxX = -Infinity,
     maxY = -Infinity;
+
 
   for (const [lon, lat] of coords) {
     if (lon < minX) minX = lon;
@@ -66,6 +73,7 @@ function buildPath(coords: LonLat[], size: number, pad = 3) {
   }
 
   return d;
+  
 }
 
 function RouteMiniIcon({ routeFeature }: { routeFeature: any }) {

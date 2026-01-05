@@ -2,10 +2,16 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { db } from "../../services/db";
 
+
+
+
 type TableRow = Record<string, any>;
 
 function toPreview(value: any, maxLen = 120) {
+  
   let s: string;
+
+
 
   if (value === null) s = "null";
   else if (value === undefined) s = "undefined";
@@ -14,11 +20,14 @@ function toPreview(value: any, maxLen = 120) {
   else s = Object.prototype.toString.call(value);
 
   return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
+
+
 }
 
 function safeColumns(rows: TableRow[]) {
   const first = rows[0];
   return first ? Object.keys(first) : [];
+
 }
 
 export default function DebugTab() {
@@ -31,6 +40,8 @@ export default function DebugTab() {
   const columns = useMemo(() => safeColumns(rows), [rows]);
   const previewColumns = useMemo(() => columns.slice(0, 3), [columns]);
 
+  
+  
   const refreshTablesAndCounts = useCallback(() => {
     try {
       setError(null);
@@ -52,15 +63,20 @@ export default function DebugTab() {
           nextCounts[name] = 0;
         }
       }
+      
+      
       setCounts(nextCounts);
     } catch (e: any) {
       setError(e?.message ?? String(e));
     }
   }, []);
 
+  
   const loadTableRows = useCallback((tableName: string) => {
     try {
       setError(null);
+      
+      
       setSelectedTable(tableName);
 
       const data = db.getAllSync(`SELECT * FROM "${tableName}" LIMIT 20;`) as TableRow[];
@@ -72,12 +88,15 @@ export default function DebugTab() {
   }, []);
 
   const goBack = () => {
+
+
     setSelectedTable(null);
     setRows([]);
     setError(null);
   };
 
   const deleteAllData = () => {
+
     Alert.alert(
       "Delete all data?",
       "This will permanently delete all rows from all app tables.",
@@ -93,6 +112,8 @@ export default function DebugTab() {
                 DELETE FROM routes;
                 VACUUM;
               `);
+
+
 
               goBack();
               refreshTablesAndCounts();

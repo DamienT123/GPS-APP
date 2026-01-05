@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+
 import {
   Alert,
   View,
@@ -10,8 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Linking,
-} from "react-native";
+  Linking,} from "react-native";
 
 import { DEFAULT_ZOOM, MAX_ZOOM, MIN_ZOOM, ME_ZOOM } from "../../config/mapConfig";
 import { useLiveLocation } from "../../hooks/useLiveLocation";
@@ -35,6 +35,7 @@ import {
 } from "../../services/overpassService";
 
 export default function MapScreen() {
+
   const cameraRef = useRef<any>(null);
 
   const { pos, error } = useLiveLocation();
@@ -48,7 +49,7 @@ export default function MapScreen() {
   const [followMe, setFollowMe] = useState(false);
 
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("Hold on the map to add waypoints.");
+  const [message, setMessage] = useState("Hold map to add waypoint.");
 
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
   const [showSavedRoutes, setShowSavedRoutes] = useState(false);
@@ -206,6 +207,7 @@ export default function MapScreen() {
     if (busy) return;
 
     stopFollowing();
+    
     setBusy(true);
     setMessage("Adding searched location…");
 
@@ -222,6 +224,7 @@ export default function MapScreen() {
         },
       ];
 
+      
       setWaypoints(next);
 
       cameraRef.current?.setCamera({
@@ -238,6 +241,8 @@ export default function MapScreen() {
     }
   };
 
+  
+  
   const moveWaypoint = async (from: number, to: number) => {
     if (busy) return;
     if (to < 0 || to >= waypoints.length) return;
@@ -250,6 +255,7 @@ export default function MapScreen() {
     await recalcRouteFor(next);
   };
 
+  
   const removeWaypoint = async (index: number) => {
     if (busy) return;
     const next = waypoints.filter((_, i) => i !== index);
@@ -264,6 +270,7 @@ export default function MapScreen() {
     setMessage("Reset. Hold on the map to add waypoints.");
   };
 
+  
   const zoomIn = () => {
     stopFollowing();
     setZoomLevel((z) => {
@@ -274,7 +281,9 @@ export default function MapScreen() {
   };
 
   const zoomOut = () => {
+    
     stopFollowing();
+    
     setZoomLevel((z) => {
       const next = Math.max(z - 1, MIN_ZOOM);
       cameraRef.current?.setCamera({ zoomLevel: next, animationDuration: 200 });
@@ -283,6 +292,7 @@ export default function MapScreen() {
   };
 
   const centerOnMe = () => {
+    
     if (!pos) return;
     setFollowMe(true);
     cameraRef.current?.setCamera({
@@ -293,20 +303,29 @@ export default function MapScreen() {
   };
 
   const openSaveModal = () => {
+    
     if (!routeFeature || waypoints.length < 2) {
       setMessage("Add at least 2 waypoints before saving.");
       return;
     }
+    
     setRouteNameDraft(`Route ${new Date().toLocaleString()}`);
+    
     setShowSaveModal(true);
+
   };
 
   const buildUniqueName = (draft: string) => {
     const base = draft.trim() || "Route";
+    
     const existing = new Set(savedRoutes.map((r) => (r.name || "").trim().toLowerCase()));
+    
     if (!existing.has(base.toLowerCase())) return base;
 
+    
     let n = 2;
+    
+    
     while (existing.has(`${base} (${n})`.toLowerCase())) n += 1;
     return `${base} (${n})`;
   };
@@ -333,10 +352,12 @@ export default function MapScreen() {
       setShowSaveModal(false);
       setMessage(`Saved as: ${uniqueName}`);
 
+      
       Alert.alert("Route saved", `Saved as "${uniqueName}"`, [{ text: "OK" }]);
     } catch (e: any) {
       console.log("confirmSave failed:", e);
       setMessage(e?.message ?? "Save failed");
+
       Alert.alert("Save failed", e?.message ?? "Save failed", [{ text: "OK" }]);
     }
   };
@@ -346,6 +367,7 @@ export default function MapScreen() {
   const openSavedRoutes = () => {
     refreshSavedRoutes();
     setShowSavedRoutes(true);
+
   };
 
   const chooseSavedRoute = (r: SavedRoute) => {
@@ -354,19 +376,23 @@ export default function MapScreen() {
 
     const coords = r.routeFeature?.geometry?.coordinates ?? [];
     if (coords.length >= 2) {
+      
       const lons = coords.map((c) => c[0]);
       const lats = coords.map((c) => c[1]);
       const minLon = Math.min(...lons);
       const maxLon = Math.max(...lons);
       const minLat = Math.min(...lats);
       const maxLat = Math.max(...lats);
+
       cameraRef.current?.fitBounds([minLon, minLat], [maxLon, maxLat], 60, 600);
     }
+
   };
 
   const clearOverlay = () => setSavedRouteOverlay(null);
 
   return (
+
     <View style={styles.container}>
       <MapCanvas
         cameraRef={cameraRef}
@@ -397,6 +423,7 @@ export default function MapScreen() {
             ensurePlaceCtx(full);
           }
         }}
+
         onMapPress={(lon, lat) => {
           if (overlayActive) return;
 
@@ -411,6 +438,7 @@ export default function MapScreen() {
             });
           }
         }}
+
         onMapLongPress={(lon, lat) => {
           if (overlayActive) return;
 
@@ -469,7 +497,8 @@ export default function MapScreen() {
       />
 
       <BottomRouteDropdown
-        message={overlayActive ? `Viewing saved route: ${savedRouteOverlay?.name ?? ""}` : message}
+
+          message={overlayActive ? `Viewing saved route: ${savedRouteOverlay?.name ?? ""}` : message}
         zoomLevel={zoomLevel}
         followMe={followMe}
         busy={busy}
@@ -480,6 +509,7 @@ export default function MapScreen() {
       />
 
       <View style={styles.savedBar}>
+
         <Pressable style={styles.savedBtn} onPress={openSavedRoutes}>
           <Text style={styles.savedBtnText}>Saved routes</Text>
         </Pressable>
@@ -487,6 +517,7 @@ export default function MapScreen() {
           <Text style={styles.savedBtnText}>Clear</Text>
         </Pressable>
       </View>
+
 
       <Modal visible={!!selectedExplore} transparent animationType="fade" onRequestClose={() => setSelectedExplore(null)}>
         <View style={styles.modalBackdrop}>
@@ -509,13 +540,15 @@ export default function MapScreen() {
                   );
                 })()}
 
-                <View style={styles.linkRow}>
-                  <Pressable style={[styles.linkBtn, styles.linkBtnDark]} onPress={() => openUrl(googleSearchUrl(selectedExplore))}>
-                    <Text style={styles.linkBtnTextDark}>Google</Text>
-                  </Pressable>
-                </View>
+
+                  <View style={styles.linkRow}>
+                    <Pressable style={[styles.linkBtn, styles.linkBtnDark]} onPress={() => openUrl(googleSearchUrl(selectedExplore))}>
+                      <Text style={styles.linkBtnTextDark}>Google</Text>
+                    </Pressable>
+                  </View>
               </>
             )}
+
 
             <View style={styles.saveActions}>
               <Pressable style={[styles.actionBtn, styles.actionSecondary]} onPress={() => setSelectedExplore(null)}>
@@ -538,14 +571,14 @@ export default function MapScreen() {
 
                   setSelectedExplore(null);
 
-                  if (info.website) {
-                    Alert.alert("Added", "Added to route. Open website?", [
-                      { text: "No" },
-                      { text: "Open", onPress: () => openUrl(info.website!) },
-                    ]);
-                  } else {
+                  // if (info.website) {
+                  //   Alert.alert("Added", "Added to route. Open website?", [
+                  //     { text: "No" },
+                  //     { text: "Open", onPress: () => openUrl(info.website!) },
+                  //   ]);
+                  // } else {
                     Alert.alert("Added", "Added to route.", [{ text: "OK" }]);
-                  }
+                  // }
                 }}
               >
                 <Text style={[styles.actionText, styles.actionPrimaryText]}>Add to route</Text>
@@ -593,15 +626,15 @@ export default function MapScreen() {
           <View style={styles.saveCard}>
             <Text style={styles.modalTitle}>Save route</Text>
 
-            <TextInput
-              value={routeNameDraft}
-              onChangeText={setRouteNameDraft}
-              placeholder="Route name"
-              style={styles.input}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={confirmSave}
-            />
+          <TextInput
+            value={routeNameDraft}
+            onChangeText={setRouteNameDraft}
+            placeholder="Route name"
+            style={styles.input}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={confirmSave}
+          />
 
             <View style={styles.saveActions}>
               <Pressable style={[styles.actionBtn, styles.actionSecondary]} onPress={() => setShowSaveModal(false)}>
@@ -611,6 +644,7 @@ export default function MapScreen() {
               <Pressable style={[styles.actionBtn, styles.actionPrimary]} onPress={confirmSave}>
                 <Text style={[styles.actionText, styles.actionPrimaryText]}>Save</Text>
               </Pressable>
+
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -622,13 +656,13 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  savedBar: {
-    position: "absolute",
-    top: 56,
-    right: 12,
-    flexDirection: "row",
-    gap: 10,
-  },
+    savedBar: {
+      position: "absolute",
+      top: 56,
+      right: 12,
+      flexDirection: "row",
+      gap: 10,
+    },
   savedBtn: {
     backgroundColor: "black",
     paddingHorizontal: 12,
