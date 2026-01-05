@@ -37,6 +37,16 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      <Tabs.Screen
+        name="debugTab"
+        options={{
+          title: "Debug",
+          tabBarIcon: ({ color, size }) => (
+            <IconSymbol name="gearshape.fill" size={size ?? 28} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
